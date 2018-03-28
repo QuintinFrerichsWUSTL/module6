@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: orange;
+        }
+
+        .row {
+            margin-top: 30px;
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <script>
+        var username = null;
+        var currentRoom = null;
+        /*
+        Structure for room
+             var room = {
+             name: name,
+             private: isPrivate,
+             users: [],
+             kicked: [],
+             banned: [],
+             messages: []
+         };
+         */
+        var rooms = [];
+
+        const messagingItems = [$('#messaging-center')];
+
+        var socketio = io.connect();
+
+        function hideAll() {
+            $('.container').children('div').each(function() {
+                $(this).hide();
+            });
+        }
+
+        function showLoginItems() {
+            hideAll();
+            $('#login').show();
+        }
+
+        function showMenuItems() {
+            hideAll();
+            $('.row').show();
+        }
+
+        function showMessagingItems() {
+            hideAll();
+            $('#messaging-center').show();
+        }
+
+        socketio.on("message_to_client", function (data) {
+            console.log(data);
+            if (currentRoom !== null && data.room.name === currentRoom.name) {
+                document.getElementById("chatlog").appendChild(document.createElement("hr"));
+                document.getElementById("chatlog").appendChild(document.createTextNode(username + ': ' + data.message));
+            }
+        });
+
+        function sendMessage(message, room) {
+            socketio.emit("message_to_server", {
+                message: message,
+                room: room
+            });
+        }
+
+        function login() {
+            username = document.getElementById("loginUsername").value;
+            if (username !== '') {
+                showMenuItems();
+            } else {
+                alert('Must have a username!');
+            }
+        }
+
+        function getRooms() {
+            console.log(rooms);
+            $("#rooms-list").show();
+            $("#create-private-room").show();
+            $('#create-room').show();
+            $.each(rooms, function(i, room) {
+                var button = $('<button></button>')
+                    .text(room.name)
+                    .addClass('btn')
+                    .addClass('btn-primary')
+                    .addClass('room-btn')
+                $('#rooms-list').append(button);
+                $("#room-" + room.name).click(function () {
+                    enterRoom(room);
+                });
+            });
+        }
+
+        function clearRoomContent() {
+            $(".joinRoom").each(function () {
+                $(this).empty().remove();
+            });
+        }
+
+        function enterRoom(room) {
+            currentRoom = room;
+            showMessagingItems();
+            $('#leaveRoom').click(function () {
+                leaveRoom(room);
+            });
+        }
+
+        function leaveRoom(room) {
+            currentRoom = null;
+            socketio.emit("leave_room", room);
+            $("#chatlog").empty();
+            clearRoomContent();
+            getRooms();
+            showMenuItems();
+        }
+
+        function createRoom(name, isPrivate) {
+            for (var i = 0; i < rooms.length; i++) {
+                if (rooms[i] === name) {
+                    alert("Room with that name already exists!");
+                    return
+                }
+            }
+            var room = {
+                name: name,
+                private: isPrivate,
+                users: [],
+                kicked: [],
+                banned: [],
+                messages: []
+            };
+            room.users.push(username);
+            rooms.push(room);
+            socketio.emit('new_room', room);
+            enterRoom(name);
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <div id="login" class="text-center">
+        <label for="loginUsername">Login with a username:</label>
+        <input type="text" id="loginUsername">
+        <button class="btn btn-primary" id="loginButton">Login</button>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <h1 class="display-4">Create</h1>
+            <hr>
+            <div id="create-room">
+                <label for="room-name">Name</label>
+                <input type="text" id="room-name">
+                <br>
+                <label for=public-radio"">Public</label>
+                <input type="radio" id="public-radio" name="public-private" value="public">
+                <br>
+                <label for="private-radio">Private</label>
+                <input type="radio" id="private-radio" name="public-private" value="private">
+                <br>
+                <button class="btn btn-primary" id="create-room-btn">Create room</button>
+            </div>
+        </div>
+        <div class="col">
+            <div id="rooms-list">
+                <h1 class="display-4 text-center">Available</h1>
+            </div>
+        </div>
+    </div>
+
+    <div id="messaging-center">
+        <button id="leaveRoom">Leave this room!</button>
+        <label for="message_input">Your message: </label>
+        <input type=text" id="message_input"/>
+        <button class="btn btn-primary" id="sendMessageButton">send</button>
+        <div id="chatlog"></div>
+    </div>
+</div>
+
+
+</body>
+<script type="text/javascript">
+    showLoginItems();
+
+    $('#loginButton').click(function () {
+        login();
+    });
+
+    $('#sendMessageButton').click(function (e) {
+        // Get value of input
+        var message = e.target.parentNode.childNodes[5].value;
+        sendMessage(message, currentRoom);
+    });
+
+    $('#create-room-btn').click(function () {
+        var name = $('#room-name').val();
+        var isPrivate = $('#private-radio').prop('checked', 'true');
+        createRoom(name, isPrivate);
+    });
+
+</script>
+</html>
