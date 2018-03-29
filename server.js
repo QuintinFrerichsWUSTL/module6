@@ -21,20 +21,30 @@ app.listen(3456);
 
 var rooms = [];
 
-// Do the Socket.IO magic:
+
 var io = socketio.listen(app);
 io.sockets.on("connection", function(socket){
-    // This callback runs when a new Socket.IO connection is established.
 
     socket.on('message_to_server', function(data) {
-        // This callback runs when the server receives a new message from the client.
-        console.log(data); // log it to the Node.JS output
-        io.sockets.emit("message_to_client", data) // broadcast the message to other users
+        var room = data.room;
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === room.name) {
+                rooms[i].messages.push(data.message);
+                io.sockets.emit("message_to_client", data); // broadcast the message to other users
+                console.log('Sent message', data.message);
+                return
+            }
+        }
     });
 
-    socket.on('new_room', function(room) {
+    socket.on('get_rooms_server', function() {
+       socket.emit('get_rooms_client', rooms);
+    });
+
+    socket.on('new_room_server', function(room) {
         rooms.push(room);
-        console.log(room);
+        console.log('Created room', room.name);
+        io.sockets.emit('new_room_client', room);
     });
 
     socket.on('delete_room', function(room) {

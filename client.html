@@ -17,6 +17,7 @@
     <script>
         var username = null;
         var currentRoom = null;
+        var socketio = io.connect();
         /*
         Structure for room
              var room = {
@@ -27,12 +28,14 @@
              banned: [],
              messages: []
          };
+
+         Structure for message:
+         var message = {
+            messageText
+            sender
+         }
          */
         var rooms = [];
-
-        const messagingItems = [$('#messaging-center')];
-
-        var socketio = io.connect();
 
         function hideAll() {
             $('.container').children('div').each(function() {
@@ -55,17 +58,52 @@
             $('#messaging-center').show();
         }
 
+        function createRoomButton(room) {
+            var button = $('<button></button>')
+                .text(room.name)
+                .addClass('btn')
+                .addClass('btn-primary')
+                .addClass('room-btn');
+            $('#rooms-list').append(button);
+            button.click(function () {
+                enterRoom(room);
+            });
+        }
+
+        /* Sockets */
+
         socketio.on("message_to_client", function (data) {
-            console.log(data);
+            console.log('New message', data.message);
+            currentRoom.messages.push(data.message);
             if (currentRoom !== null && data.room.name === currentRoom.name) {
-                document.getElementById("chatlog").appendChild(document.createElement("hr"));
-                document.getElementById("chatlog").appendChild(document.createTextNode(username + ': ' + data.message));
+                renderMessage(data.message);
             }
         });
 
+        socketio.on('get_rooms_client', function(data) {
+            rooms = data;
+            $.each(rooms, function(index, item) {
+                createRoomButton(item);
+            });
+        });
+
+        socketio.on('new_room_client', function(room) {
+            console.log('New room: ', room);
+            createRoomButton(room);
+        });
+
+        function renderMessage(message) {
+            document.getElementById("chatlog").appendChild(document.createElement("hr"));
+            document.getElementById("chatlog").appendChild(document.createTextNode(message.sender + ': ' +
+                message.messageText));
+        }
+
         function sendMessage(message, room) {
             socketio.emit("message_to_server", {
-                message: message,
+                message: {
+                    messageText: message,
+                    sender: username
+                },
                 room: room
             });
         }
@@ -73,39 +111,27 @@
         function login() {
             username = document.getElementById("loginUsername").value;
             if (username !== '') {
+                loadRooms();
                 showMenuItems();
             } else {
                 alert('Must have a username!');
             }
         }
 
-        function getRooms() {
-            console.log(rooms);
-            $("#rooms-list").show();
-            $("#create-private-room").show();
-            $('#create-room').show();
-            $.each(rooms, function(i, room) {
-                var button = $('<button></button>')
-                    .text(room.name)
-                    .addClass('btn')
-                    .addClass('btn-primary')
-                    .addClass('room-btn')
-                $('#rooms-list').append(button);
-                $("#room-" + room.name).click(function () {
-                    enterRoom(room);
-                });
+        function loadMessages() {
+            $.each(currentRoom.messages, function(index, item) {
+                renderMessage(item);
             });
         }
 
-        function clearRoomContent() {
-            $(".joinRoom").each(function () {
-                $(this).empty().remove();
-            });
+        function loadRooms() {
+            socketio.emit('get_rooms_server');
         }
 
         function enterRoom(room) {
             currentRoom = room;
             showMessagingItems();
+            loadMessages();
             $('#leaveRoom').click(function () {
                 leaveRoom(room);
             });
@@ -115,18 +141,15 @@
             currentRoom = null;
             socketio.emit("leave_room", room);
             $("#chatlog").empty();
-            clearRoomContent();
-            getRooms();
             showMenuItems();
         }
 
         function createRoom(name, isPrivate) {
-            for (var i = 0; i < rooms.length; i++) {
-                if (rooms[i] === name) {
-                    alert("Room with that name already exists!");
-                    return
+            $.each(rooms, function() {
+                if ($(this).name === name) {
+                    alert('Room with that name exists!');
                 }
-            }
+            });
             var room = {
                 name: name,
                 private: isPrivate,
@@ -136,9 +159,7 @@
                 messages: []
             };
             room.users.push(username);
-            rooms.push(room);
-            socketio.emit('new_room', room);
-            enterRoom(name);
+            socketio.emit('new_room_server', room);
         }
     </script>
 </head>
@@ -175,7 +196,7 @@
     </div>
 
     <div id="messaging-center">
-        <button id="leaveRoom">Leave this room!</button>
+        <button class="btn btn-danger" id="leaveRoom">Leave this room!</button>
         <label for="message_input">Your message: </label>
         <input type=text" id="message_input"/>
         <button class="btn btn-primary" id="sendMessageButton">send</button>
@@ -183,9 +204,7 @@
     </div>
 </div>
 
-
-</body>
-<script type="text/javascript">
+<script>
     showLoginItems();
 
     $('#loginButton').click(function () {
@@ -200,9 +219,14 @@
 
     $('#create-room-btn').click(function () {
         var name = $('#room-name').val();
-        var isPrivate = $('#private-radio').prop('checked', 'true');
+        var isPublic = document.getElementById('public-radio').checked;
+        var isPrivate = document.getElementById('private-radio').checked;
+        if (!isPrivate && !isPublic) {
+            alert('Must select private or public!');
+            return
+        }
         createRoom(name, isPrivate);
     });
-
 </script>
+</body>
 </html>
