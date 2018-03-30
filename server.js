@@ -41,6 +41,15 @@ io.sockets.on("connection", function(socket){
        socket.emit('get_rooms_client', rooms);
     });
 
+    socket.on('enter_room_server', function(data) {
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.room.name) {
+                rooms[i].users = data.room.users;
+                io.sockets.emit('enter_room_client', data);
+            }
+        }
+    });
+
     socket.on('new_room_server', function(room) {
         rooms.push(room);
         console.log('Created room', room.name);

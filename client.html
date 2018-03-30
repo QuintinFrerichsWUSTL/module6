@@ -26,7 +26,8 @@
              users: [],
              kicked: [],
              banned: [],
-             messages: []
+             messages: [],
+             creator: name
          };
 
          Structure for message:
@@ -59,6 +60,7 @@
         }
 
         function createRoomButton(room) {
+            rooms.push(room);
             var button = $('<button></button>')
                 .text(room.name)
                 .addClass('btn')
@@ -74,9 +76,28 @@
 
         socketio.on("message_to_client", function (data) {
             console.log('New message', data.message);
-            currentRoom.messages.push(data.message);
             if (currentRoom !== null && data.room.name === currentRoom.name) {
+                currentRoom.messages.push(data.message);
                 renderMessage(data.message);
+            }
+        });
+
+        socketio.on('enter_room_client', function(data) {
+            // Add the new user to the room
+            $.each(rooms, function(index, localRoom) {
+                if (localRoom.name === data.room.name) {
+                    localRoom.users = data.room.users;
+                }
+            });
+            // If we just entered the room, render it
+            if (data.newUser === username) {
+                currentRoom = room;
+                showMessagingItems();
+                loadMessages(); // Load and render messages
+                loadUsers(); // Load and render users
+                $('#leaveRoom').click(function () {
+                    leaveRoom(room);
+                });
             }
         });
 
@@ -96,6 +117,11 @@
             document.getElementById("chatlog").appendChild(document.createElement("hr"));
             document.getElementById("chatlog").appendChild(document.createTextNode(message.sender + ': ' +
                 message.messageText));
+        }
+
+        function renderUsername(name) {
+            var userListItem = $('<li></li>').text(name);
+            $('#user-list').append(userListItem);
         }
 
         function sendMessage(message, room) {
@@ -129,12 +155,12 @@
         }
 
         function enterRoom(room) {
-            currentRoom = room;
-            showMessagingItems();
-            loadMessages();
-            $('#leaveRoom').click(function () {
-                leaveRoom(room);
-            });
+            room.users.push(username);
+            data = {
+                room: room,
+                newUser: username
+            };
+            socketio.emit('enter_room_server', data);
         }
 
         function leaveRoom(room) {
@@ -148,6 +174,7 @@
             $.each(rooms, function() {
                 if ($(this).name === name) {
                     alert('Room with that name exists!');
+                    return
                 }
             });
             var room = {
@@ -158,7 +185,6 @@
                 banned: [],
                 messages: []
             };
-            room.users.push(username);
             socketio.emit('new_room_server', room);
         }
     </script>
@@ -200,6 +226,7 @@
         <label for="message_input">Your message: </label>
         <input type=text" id="message_input"/>
         <button class="btn btn-primary" id="sendMessageButton">send</button>
+        <div id="user-list"></div>
         <div id="chatlog"></div>
     </div>
 </div>
