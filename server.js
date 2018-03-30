@@ -30,8 +30,12 @@ io.sockets.on("connection", function(socket){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === room.name) {
                 rooms[i].messages.push(data.message);
-                io.sockets.emit("message_to_client", data); // broadcast the message to other users
-                console.log('Sent message', data.message);
+                var newData = {
+                    message: data.message,
+                    rooms: rooms,
+                    roomName: data.room.name
+                };
+                io.sockets.emit("message_to_client", newData);
                 return
             }
         }
@@ -43,9 +47,34 @@ io.sockets.on("connection", function(socket){
 
     socket.on('enter_room_server', function(data) {
         for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+                rooms[i].users.push(data.newUser);
+                console.log('Adding user to room', data.newUser, data.roomName);
+                var newData = {
+                    rooms: rooms,
+                    newUser: data.newUser,
+                    roomName: data.roomName
+                };
+                console.log('Entering room', data.roomName);
+                io.sockets.emit('enter_room_client', newData);
+                return
+            }
+        }
+    });
+
+    socket.on('leave_room_server', function(data) {
+        for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.room.name) {
-                rooms[i].users = data.room.users;
-                io.sockets.emit('enter_room_client', data);
+                rooms[i].users = rooms[i].users.filter(function(user) {
+                    return user !== data.exitingUser;
+                });
+                var newData = {
+                    rooms: rooms,
+                    exitingUser: data.exitingUser,
+                    roomName: data.roomName
+                };
+                io.sockets.emit('leave_room_client', newData);
+                return
             }
         }
     });

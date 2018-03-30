@@ -59,58 +59,74 @@
             $('#messaging-center').show();
         }
 
-        function createRoomButton(room) {
-            rooms.push(room);
+        function createRoomButton(roomName) {
             var button = $('<button></button>')
-                .text(room.name)
+                .text(roomName)
                 .addClass('btn')
                 .addClass('btn-primary')
                 .addClass('room-btn');
             $('#rooms-list').append(button);
             button.click(function () {
-                enterRoom(room);
+                enterRoom(roomName);
             });
         }
 
         /* Sockets */
 
         socketio.on("message_to_client", function (data) {
-            console.log('New message', data.message);
-            if (currentRoom !== null && data.room.name === currentRoom.name) {
-                currentRoom.messages.push(data.message);
+            // Add the new message to the room
+            rooms = data.rooms;
+            // If we're in the room, show the message
+            if (currentRoom !== null && data.roomName === currentRoom.name) {
                 renderMessage(data.message);
             }
         });
 
         socketio.on('enter_room_client', function(data) {
             // Add the new user to the room
-            $.each(rooms, function(index, localRoom) {
-                if (localRoom.name === data.room.name) {
-                    localRoom.users = data.room.users;
-                }
-            });
+            rooms = data.rooms;
+            console.log('Enter room', data);
             // If we just entered the room, render it
             if (data.newUser === username) {
-                currentRoom = room;
+                currentRoom = data.rooms.filter(function(room) {
+                    return room.name === data.roomName
+                })[0];
                 showMessagingItems();
                 loadMessages(); // Load and render messages
                 loadUsers(); // Load and render users
                 $('#leaveRoom').click(function () {
-                    leaveRoom(room);
+                    leaveRoom();
                 });
+            } else if (currentRoom !== null && data.roomName === currentRoom.name) {
+                // If we're in the room and someone else joined, render
+                renderUsername(data.newUser);
             }
         });
 
         socketio.on('get_rooms_client', function(data) {
             rooms = data;
             $.each(rooms, function(index, item) {
-                createRoomButton(item);
+                createRoomButton(item.name);
             });
         });
 
         socketio.on('new_room_client', function(room) {
             console.log('New room: ', room);
-            createRoomButton(room);
+            createRoomButton(room.name);
+        });
+
+        socketio.on('leave_room_client', function(data) {
+            // Update rooms
+            rooms = data.rooms;
+            // If we just exited
+            if (data.exitingUser === username) {
+                $("#chatlog").empty();
+                $('#user-list').empty();
+                showMenuItems();
+            } else if (currentRoom !== null && data.roomName === currentRoom.name) {
+                // If we're in the room, remove that user from user list
+                $('#' + data.exitingUser).empty();
+            }
         });
 
         function renderMessage(message) {
@@ -120,8 +136,14 @@
         }
 
         function renderUsername(name) {
-            var userListItem = $('<li></li>').text(name);
+            var userListItem = $('<li></li>').text(name).attr('id', username);
             $('#user-list').append(userListItem);
+        }
+
+        function loadUsers() {
+            $.each(currentRoom.users, function(index, item) {
+                renderUsername(item);
+            })
         }
 
         function sendMessage(message, room) {
@@ -154,20 +176,20 @@
             socketio.emit('get_rooms_server');
         }
 
-        function enterRoom(room) {
-            room.users.push(username);
-            data = {
-                room: room,
+        function enterRoom(roomName) {
+            var data = {
+                roomName: roomName,
                 newUser: username
             };
             socketio.emit('enter_room_server', data);
         }
 
-        function leaveRoom(room) {
-            currentRoom = null;
-            socketio.emit("leave_room", room);
-            $("#chatlog").empty();
-            showMenuItems();
+        function leaveRoom() {
+            var data = {
+                room: currentRoom,
+                exitingUser: username
+            };
+            socketio.emit("leave_room_server", data);
         }
 
         function createRoom(name, isPrivate) {
