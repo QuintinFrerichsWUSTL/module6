@@ -61,7 +61,6 @@
 
         function createRoomButton(roomName, private) {
             if(private){
-                alert("Private");
                 var buttonP = $('<button></button>')
                     .text(roomName)
                     .addClass('btn')
@@ -115,12 +114,8 @@
                 })[0];
                 showMessagingItems();
                 loadMessages(); // Load and render messages
-                if(username == currentRoom.creator){
-                    loadUsersCreator();
-                }
-                else{
-                    loadUsers(); // Load and render users
-                }
+                loadUsers(); // Load and render users
+
                 $('#leaveRoom').click(function () {
                     leaveRoom();
                 });
@@ -129,7 +124,9 @@
                 renderUsername(data.newUser);
             }
         });
-
+        socketio.on('refresh_rooms_client', function(data){
+           rooms = data;
+        });
         socketio.on('get_rooms_client', function(data) {
             rooms = data;
             $.each(rooms, function(index, item) {
@@ -162,24 +159,67 @@
                 message.messageText));
         }
 
-        function renderUsername(name) {
-            var userListItem = $('<li></li>').text(name).attr('id', username);
-            alert("Render");
-            $('#user-list').append(userListItem);
+        function renderUsername(name, button) {
+            if(button){
+                var userItem = $('<div></div>').attr('id', name);
+                var userListItem = $('<li></li>').text(name);
+                userItem.append(userListItem);
+                var kickButton =  $('<button></button>')
+                    .text("Temporarily Kick User")
+                    .addClass('btn')
+                    .addClass('btn-primary').attr('id', 'kick-button');
+                var permenentButton =  $('<button></button>')
+                    .text("Permanently Ban User")
+                    .addClass('btn')
+                    .addClass('btn-danger').attr('id', 'ban-button');
+                kickButton.click(function () {
+                    kickUser(name);
+                });
+                permenentButton.click(function () {
+                    banUser(name, currentRoom.name);
+                });
+                userItem.append(kickButton);
+                userItem.append(permenentButton);
+                $('#user-list').append(userItem);
+            }
+            else{
+                var userListItem = $('<li></li>').text(name).attr('id', name);
+                $('#user-list').append(userListItem);
+            }
+
         }
-        function renderUsernameCreator(name) {
-            var userListItem = $('<li></li>').text(name).attr('id', username);
-            alert("Creator");
-            $('#user-list').append(userListItem);
+        function kickUser(username){
+            alert("Kick");
+            currentRoom.kicked.push(username);
+            var deleteItem =  document.getElementById(username);
+            deleteItem.remove();
+            //Alert the user
+            //Make it so the user can come back
         }
-        function loadUsersCreator(){
-            $.each(currentRoom.users, function(index, item) {
-                renderUsernameCreator(item);
-            })
+        function banUser(username, roomName){
+            alert("Ban" + username);
+            var data = {
+                roomName: roomName,
+                user: username
+            };
+            socketio.emit('update_banned', data);
+            var deleteItem =  document.getElementById(username);
+            deleteItem.remove();
+            //Alert the user
+            //User cannot come back
         }
         function loadUsers() {
             $.each(currentRoom.users, function(index, item) {
-                renderUsername(item);
+                var renderButton = (item != currentRoom.creator) && (username == currentRoom.creator);
+                var isBanned = false;
+                for(var i=0; i<currentRoom.banned.length; i++){
+                    if(currentRoom.banned[i] === item){
+                        isBanned = true;
+                    }
+                }
+                if(!isBanned){
+                    renderUsername(item, renderButton);
+                }
             })
         }
 
@@ -214,20 +254,21 @@
         }
 
         function enterRoom(roomName) {
-            var data = {
-                roomName: roomName,
-                newUser: username
-            };
-            socketio.emit('enter_room_server', data);
-        }
-        function enterPrivateRoom(roomName, password) {
-            for(var i =0; i<rooms.length; i++){
-                if(rooms[i]['name'] === roomName){
-                    var thePass = rooms[i]['password'];
+            var isBanned = false;
+            var theRoom = rooms.filter(function(room) {
+                return room.name === roomName;
+            })[0];
+            alert("Entering creator:" + theRoom.creator);
+            if(theRoom!= null){
+                alert("Banned:" + theRoom.banned[0]);
+                alert("user: "+ username);
+                for(var i=0; i<theRoom.banned.length; i++){
+                    if(theRoom.banned[i] === username){
+                        isBanned = true;
+                    }
                 }
-
             }
-            if(password === thePass){
+            if(!isBanned){
                 var data = {
                     roomName: roomName,
                     newUser: username
@@ -235,7 +276,29 @@
                 socketio.emit('enter_room_server', data);
             }
             else{
+                alert("You have been banned from this chatroom!")
+            }
+        }
+        function enterPrivateRoom(roomName, password) {
+
+            var isBanned = false;
+            for(var i=0; i<currentRoom.banned.length; i++){
+                if(currentRoom.banned[i] === item){
+                    isBanned = true;
+                }
+            }
+            if(password === thePass && isBanned ===false){
+                var data = {
+                    roomName: roomName,
+                    newUser: username
+                };
+                socketio.emit('enter_room_server', data);
+            }
+            else if(password != thePass){
                 alert("Wrong Password!");
+            }
+            else if(isBanned){
+                alert("You have been banned from this chatroom");
             }
         }
 

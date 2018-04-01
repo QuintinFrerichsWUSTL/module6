@@ -40,7 +40,18 @@ io.sockets.on("connection", function(socket){
             }
         }
     });
+    socket.on('update_banned', function(data){
+        console.log("Updating banned");
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
 
+                console.log('Banning User From Room', data.username, data.roomName);
+                rooms[i].banned.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
     socket.on('get_rooms_server', function() {
        socket.emit('get_rooms_client', rooms);
     });
@@ -48,7 +59,13 @@ io.sockets.on("connection", function(socket){
     socket.on('enter_room_server', function(data) {
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
-                rooms[i].users.push(data.newUser);
+                var duplicate = false;
+                for(var j=0; j<rooms[i].users.length; j++){
+                    if(rooms[i].users[j] === data.newUser){
+                        duplicate = true;
+                    }
+                }
+                if(!duplicate){rooms[i].users.push(data.newUser);}
                 console.log('Adding user to room', data.newUser, data.roomName);
                 var newData = {
                     rooms: rooms,
