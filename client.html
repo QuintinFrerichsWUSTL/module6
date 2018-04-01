@@ -173,7 +173,7 @@
                     .addClass('btn')
                     .addClass('btn-danger').attr('id', 'ban-button');
                 kickButton.click(function () {
-                    kickUser(name);
+                    kickUser(name, currentRoom.name);
                 });
                 permenentButton.click(function () {
                     banUser(name, currentRoom.name);
@@ -188,16 +188,19 @@
             }
 
         }
-        function kickUser(username){
-            alert("Kick");
-            currentRoom.kicked.push(username);
+        function kickUser(username, roomName){
+            alert("Kick" + username);
+            var data = {
+                roomName: roomName,
+                user: username
+            };
+            socketio.emit('update_banned', data);
             var deleteItem =  document.getElementById(username);
             deleteItem.remove();
             //Alert the user
             //Make it so the user can come back
         }
         function banUser(username, roomName){
-            alert("Ban" + username);
             var data = {
                 roomName: roomName,
                 user: username
@@ -258,7 +261,6 @@
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
-            alert("Entering creator:" + theRoom.creator);
             if(theRoom!= null){
                 alert("Banned:" + theRoom.banned[0]);
                 alert("user: "+ username);
@@ -282,9 +284,16 @@
         function enterPrivateRoom(roomName, password) {
 
             var isBanned = false;
-            for(var i=0; i<currentRoom.banned.length; i++){
-                if(currentRoom.banned[i] === item){
-                    isBanned = true;
+            var theRoom = rooms.filter(function(room) {
+                return room.name === roomName;
+            })[0];
+            if(theRoom!= null){
+                alert("Banned:" + theRoom.banned[0]);
+                alert("user: "+ username);
+                for(var i=0; i<theRoom.banned.length; i++){
+                    if(theRoom.banned[i] === username){
+                        isBanned = true;
+                    }
                 }
             }
             if(password === thePass && isBanned ===false){
@@ -365,6 +374,13 @@
             <div id="rooms-list">
                 <h1 class="display-4 text-center">Available</h1>
             </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h1 class="display-4">Private Messages</h1>
+            <hr>
+            <div id="privatemsg"></div>
         </div>
     </div>
 
