@@ -59,16 +59,38 @@
             $('#messaging-center').show();
         }
 
-        function createRoomButton(roomName) {
-            var button = $('<button></button>')
-                .text(roomName)
-                .addClass('btn')
-                .addClass('btn-primary')
-                .addClass('room-btn');
-            $('#rooms-list').append(button);
-            button.click(function () {
-                enterRoom(roomName);
-            });
+        function createRoomButton(roomName, private) {
+            if(private){
+                alert("Private");
+                var buttonP = $('<button></button>')
+                    .text(roomName)
+                    .addClass('btn')
+                    .addClass('btn-primary')
+                    .addClass('room-btn');
+                var pass = $('<input>').attr({type:"text", id:"pass", value:"Enter Password"});
+                var div = $('<div></div>');
+                div.append(buttonP);
+                div.append(pass);
+                $('#rooms-list').append(div);
+                $('#rooms-list').append($('<br>'));
+                buttonP.click(function () {
+                    var input = document.getElementById("pass");
+                    enterPrivateRoom(roomName, input.value);
+                });
+            }
+            else{
+                var button = $('<button></button>')
+                    .text(roomName)
+                    .addClass('btn')
+                    .addClass('btn-primary')
+                    .addClass('room-btn');
+                $('#rooms-list').append(button);
+                $('#rooms-list').append($('<br>'));
+                button.click(function () {
+                    enterRoom(roomName);
+                });
+            }
+
         }
 
         /* Sockets */
@@ -93,7 +115,12 @@
                 })[0];
                 showMessagingItems();
                 loadMessages(); // Load and render messages
-                loadUsers(); // Load and render users
+                if(username == currentRoom.creator){
+                    loadUsersCreator();
+                }
+                else{
+                    loadUsers(); // Load and render users
+                }
                 $('#leaveRoom').click(function () {
                     leaveRoom();
                 });
@@ -106,7 +133,7 @@
         socketio.on('get_rooms_client', function(data) {
             rooms = data;
             $.each(rooms, function(index, item) {
-                createRoomButton(item.name);
+                createRoomButton(item.name, item.private);
             });
         });
 
@@ -137,9 +164,19 @@
 
         function renderUsername(name) {
             var userListItem = $('<li></li>').text(name).attr('id', username);
+            alert("Render");
             $('#user-list').append(userListItem);
         }
-
+        function renderUsernameCreator(name) {
+            var userListItem = $('<li></li>').text(name).attr('id', username);
+            alert("Creator");
+            $('#user-list').append(userListItem);
+        }
+        function loadUsersCreator(){
+            $.each(currentRoom.users, function(index, item) {
+                renderUsernameCreator(item);
+            })
+        }
         function loadUsers() {
             $.each(currentRoom.users, function(index, item) {
                 renderUsername(item);
@@ -183,6 +220,24 @@
             };
             socketio.emit('enter_room_server', data);
         }
+        function enterPrivateRoom(roomName, password) {
+            for(var i =0; i<rooms.length; i++){
+                if(rooms[i]['name'] === roomName){
+                    var thePass = rooms[i]['password'];
+                }
+
+            }
+            if(password === thePass){
+                var data = {
+                    roomName: roomName,
+                    newUser: username
+                };
+                socketio.emit('enter_room_server', data);
+            }
+            else{
+                alert("Wrong Password!");
+            }
+        }
 
         function leaveRoom() {
             var data = {
@@ -199,9 +254,15 @@
                     return
                 }
             });
+            var password = null;
+            if(isPrivate){
+               password = document.getElementById('password').value;
+            }
             var room = {
                 name: name,
+                creator: username,
                 private: isPrivate,
+                password: password,
                 users: [],
                 kicked: [],
                 banned: [],
@@ -232,6 +293,7 @@
                 <br>
                 <label for="private-radio">Private</label>
                 <input type="radio" id="private-radio" name="public-private" value="private">
+                <input type="text" id="password" value="Private Password">
                 <br>
                 <button class="btn btn-primary" id="create-room-btn">Create room</button>
             </div>
@@ -248,6 +310,7 @@
         <label for="message_input">Your message: </label>
         <input type=text" id="message_input"/>
         <button class="btn btn-primary" id="sendMessageButton">send</button>
+        <p>Users currently in this chat: </p>
         <div id="user-list"></div>
         <div id="chatlog"></div>
     </div>
