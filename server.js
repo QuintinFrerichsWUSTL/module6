@@ -54,12 +54,36 @@ io.sockets.on("connection", function(socket){
         //}
     });
     socket.on('update_banned', function(data){
-        console.log("Updating banned");
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
 
                 console.log('Banning User From Room', data.username, data.roomName);
                 rooms[i].banned.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
+    socket.on('update_kicked', function(data){
+        console.log("Updating kicked");
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+
+                console.log('Kicking User From Room', data.username, data.roomName);
+                rooms[i].kicked.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
+    socket.on('update_unkicked', function(data){
+        console.log("Updating kicked");
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+
+                console.log('Unkicking User From Room', data.username, data.roomName);
+                var index = rooms[i].kicked.indexOf(data.user);
+                rooms[i].kicked.splice(index, 1);
                 io.sockets.emit('refresh_rooms_client', rooms);
                 return
             }

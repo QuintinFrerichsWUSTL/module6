@@ -238,27 +238,42 @@
             }
 
         }
-        function kickUser(username, roomName){
-            alert("Kick" + username);
+        function kickUser(user, roomName){
+            alert("Kick" + user);
             var data = {
                 roomName: roomName,
-                user: username
+                user: user
             };
-            socketio.emit('update_banned', data);
-            var deleteItem =  document.getElementById(username);
+            socketio.emit('update_kicked', data);
+            var deleteItem =  document.getElementById(user);
             deleteItem.remove();
+            var banString = "You have been kicked from the chat room " + roomName;
+            sendPM(banString, user, "Admin");
             //Alert the user
+
+
             //Make it so the user can come back
         }
-        function banUser(username, roomName){
+        function unkickUser(user, roomName){
+            alert("Kick" + user);
             var data = {
                 roomName: roomName,
-                user: username
+                user: user
+            };
+            socketio.emit('update_kicked', data);
+
+        }
+        function banUser(user, roomName){
+            var data = {
+                roomName: roomName,
+                user: user
             };
             socketio.emit('update_banned', data);
-            var deleteItem =  document.getElementById(username);
+            var deleteItem =  document.getElementById(user);
             deleteItem.remove();
             //Alert the user
+            var banString = "You have been banned from the chat room " + roomName;
+            sendPM(banString, user, "Admin");
             //User cannot come back
         }
         function loadUsers() {
@@ -289,7 +304,7 @@
             socketio.emit("pm_server", {
                 pmessage: {
                     messageText: message,
-                    sender: username,
+                    sender: sender,
                     user: user
                 }
             });
@@ -315,45 +330,64 @@
 
         function enterRoom(roomName) {
             var isBanned = false;
+            var isKicked = false;
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
             if(theRoom!= null){
-                alert("Banned:" + theRoom.banned[0]);
-                alert("user: "+ username);
+
                 for(var i=0; i<theRoom.banned.length; i++){
                     if(theRoom.banned[i] === username){
                         isBanned = true;
                     }
                 }
+                for(var j=0; j<theRoom.kicked.length; j++){
+                    if(theRoom.kicked[j] === username){
+                        isKicked = true;
+                    }
+                }
             }
-            if(!isBanned){
+            alert("This" + isKicked);
+            if(!isBanned && !isKicked){
                 var data = {
                     roomName: roomName,
                     newUser: username
                 };
                 socketio.emit('enter_room_server', data);
             }
-            else{
+            else if(isKicked){
+                alert("You have been kicked from this chatroom, but you can return now");
+                unkickUser(username, roomName);
+                var data = {
+                    roomName: roomName,
+                    newUser: username
+                };
+                socketio.emit('enter_room_server', data);
+            }
+            else if(isBanned){
                 alert("You have been banned from this chatroom!")
             }
+            else{}
         }
         function enterPrivateRoom(roomName, password) {
-
             var isBanned = false;
+            var isKicked = false;
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
             if(theRoom!= null){
-                alert("Banned:" + theRoom.banned[0]);
-                alert("user: "+ username);
                 for(var i=0; i<theRoom.banned.length; i++){
                     if(theRoom.banned[i] === username){
                         isBanned = true;
                     }
                 }
+                for(var j=0; j<theRoom.banned.length; j++){
+                    if(theRoom.kicked[j] === username){
+                        isKicked = true;
+                    }
+                }
             }
-            if(password === thePass && isBanned ===false){
+            if(password === thePass && isBanned ===false && isKicked ===false){
                 var data = {
                     roomName: roomName,
                     newUser: username
@@ -366,6 +400,15 @@
             else if(isBanned){
                 alert("You have been banned from this chatroom");
             }
+            else if(isKicked){
+                alert("You have been kicked from this chatroom, but you can return now");
+                var data = {
+                    roomName: roomName,
+                    newUser: username
+                };
+                socketio.emit('enter_room_server', data);
+            }
+            else{}
         }
 
         function leaveRoom() {
