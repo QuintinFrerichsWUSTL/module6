@@ -63,6 +63,7 @@
 
         function createRoomButton(roomName, private) {
             if(private){
+                alert("Private room");
                 var buttonP = $('<button></button>')
                     .text(roomName)
                     .addClass('btn')
@@ -135,7 +136,8 @@
                 });
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room and someone else joined, render
-                renderUsername(data.newUser);
+                var shouldRender = (data.newUser != currentRoom.creator) && (username == currentRoom.creator);
+                renderUsername(data.newUser, shouldRender);
             }
         });
         socketio.on('refresh_rooms_client', function(data){
@@ -268,7 +270,7 @@
                 $('#user-list').append(userItem);
             }
             else{
-                /*
+
                 var userItem;
                 if(name != username){
                     userItem = $('<div></div>').attr('id', name);
@@ -285,7 +287,7 @@
                 }
 
                 $('#user-list').append(userItem);
-                */
+
             }
 
         }
@@ -424,6 +426,7 @@
         function enterPrivateRoom(roomName, password) {
             var isBanned = false;
             var isKicked = false;
+            //var thePass =
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
@@ -439,6 +442,7 @@
                     }
                 }
             }
+
             if(password === thePass && isBanned ===false && isKicked ===false){
                 var data = {
                     roomName: roomName,
