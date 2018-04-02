@@ -16,6 +16,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
     <script>
         var username = null;
+        var userId = null;
         var currentRoom = null;
         var socketio = io.connect();
         /*
@@ -73,6 +74,14 @@
 
         /* Sockets */
 
+        socketio.on('login', function(id) {
+            userId = id;
+        });
+
+        socketio.on('disconnect_client', function(id) {
+           if
+        });
+
         socketio.on("message_to_client", function (data) {
             // Add the new message to the room
             rooms = data.rooms;
@@ -122,10 +131,12 @@
             if (data.exitingUser === username) {
                 $("#chatlog").empty();
                 $('#user-list').empty();
+                currentRoom = null;
                 showMenuItems();
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room, remove that user from user list
-                $('#' + data.exitingUser).empty();
+                var selector = '#user-' + data.exitingUser;
+                $(selector).remove();
             }
         });
 
@@ -136,7 +147,7 @@
         }
 
         function renderUsername(name) {
-            var userListItem = $('<li></li>').text(name).attr('id', username);
+            var userListItem = $('<li></li>').text(name).attr('id', 'user-' + name);
             $('#user-list').append(userListItem);
         }
 
@@ -159,6 +170,7 @@
         function login() {
             username = document.getElementById("loginUsername").value;
             if (username !== '') {
+                socketio.emit('new_server_login', {userId: userId, username: username});
                 loadRooms();
                 showMenuItems();
             } else {
@@ -187,7 +199,7 @@
         function leaveRoom() {
             var data = {
                 room: currentRoom,
-                exitingUser: username
+                exitingUser: username,
             };
             socketio.emit("leave_room_server", data);
         }

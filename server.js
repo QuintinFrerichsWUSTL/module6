@@ -20,10 +20,17 @@ var app = http.createServer(function(req, resp){
 app.listen(3456);
 
 var rooms = [];
-
+var map = {};
 
 var io = socketio.listen(app);
 io.sockets.on("connection", function(socket){
+
+    socket.emit('login', socket.id);
+
+    socket.on('new_server_login', function(data) {
+        // Map userIds to usernames
+        map.data.userId = data.username;
+    });
 
     socket.on('message_to_server', function(data) {
         var room = data.room;
@@ -71,8 +78,9 @@ io.sockets.on("connection", function(socket){
                 var newData = {
                     rooms: rooms,
                     exitingUser: data.exitingUser,
-                    roomName: data.roomName
+                    roomName: data.room.name
                 };
+                console.log('Sending new Data', newData);
                 io.sockets.emit('leave_room_client', newData);
                 return
             }
@@ -92,6 +100,10 @@ io.sockets.on("connection", function(socket){
                 return
             }
         }
+    });
+
+    socket.on('diconnect', function() {
+        io.sockets.emit('disconnect_client', socket.id);
     });
 
 
