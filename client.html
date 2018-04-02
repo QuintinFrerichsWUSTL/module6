@@ -141,6 +141,16 @@
         socketio.on('refresh_rooms_client', function(data){
            rooms = data;
         });
+        socketio.on('refresh_likes_client', function(data){
+            rooms = data;
+            //Erase messages
+            var parent = document.getElementById("chatlog");
+            while(parent.firstChild){
+                parent.removeChild(parent.firstChild);
+            }
+
+            loadMessages();
+        });
         socketio.on('get_rooms_client', function(data) {
             rooms = data;
             $.each(rooms, function(index, item) {
@@ -176,11 +186,22 @@
                 .addClass('btn')
                 .addClass('btn-primary').attr('id', 'like-button');
             //Construct string for likes
-            var likes = $('<p></p>').text("People who like this message: ").attr('id', 'like-count');
+            var likes;
+            var likeString = "People who like this message: ";
+            if(message.likes.length>=1){
+                alert("There are likes");
+
+                likeString += message.likes[0];
+                for(var i =1; i<message.likes.length; i++){
+
+                    likeString += ", "+message.likes[i];
+                }
+
+            }
             likeButton.click(function(){
                 var hasLiked = false;
                 for(var i=0; i<message.likes.length; i++){
-                    if(message[i] === username){
+                    if(message.likes[i] == username){
                         hasLiked = true;
                     }
 
@@ -189,20 +210,15 @@
                     alert("You have already liked this message!");
                 }
                 else{
+                    alert("Have not liked");
                     message.likes.push(username);
                     var data1 = {msg: message, room: currentRoom};
                     socketio.emit('update_likes', data1);
-                    if(message.likes.length>=1){
-                        $('.like-count').text += ","+ username;
-                    }
-                    else{
-                        $('.like-count').text += username;
-                    }
-
 
                 }
 
             });
+            likes = $('<p></p>').text(likeString).attr('id', 'like-count');
             $('#chatlog').append(likes);
             $('#chatlog').append(likeButton);
         }

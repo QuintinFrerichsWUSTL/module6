@@ -36,7 +36,6 @@ io.sockets.on("connection", function(socket){
                     message: data.message,
                     rooms: rooms,
                     roomName: data.room.name,
-                    likes:data.likes
                 };
                 io.sockets.emit("message_to_client", newData);
                 return
@@ -46,15 +45,25 @@ io.sockets.on("connection", function(socket){
     socket.on('update_likes', function(data){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.room.name) {
-                console.log('Updating users who like', data.username, data.roomName);
+                console.log('Updating users who like', data.msg.messageText, data.room.name);
                 //Over write old message
-                for(var j=0; j<rooms[i].messages.length; j++){
-                    if(rooms[i].messages[j].messageText == data.message.messageText && rooms[i].messages[j].sender == data.message.sender){
-                        
+                var present = false;
+                if(rooms[i].messages.length > 0){
+                    for(var j=0; j<rooms[i].messages.length; j++){
+
+                        if(rooms[i].messages[j].messageText == data.msg.messageText && rooms[i].messages[j].sender == data.msg.sender){
+                            console.log("Is present");
+                            present = true;
+                            rooms[i].messages[j] = data.msg;
+                            console.log(rooms[i].messages[j].likes[0]);
+                        }
                     }
                 }
-                rooms[i].messages.push(data.user);
-                io.sockets.emit('refresh_rooms_client', rooms);
+                if(!present){
+                    console.log("Not present");
+                    rooms[i].messages.push(data.msg);
+                }
+                io.sockets.emit('refresh_likes_client', rooms);
                 return
             }
         }
