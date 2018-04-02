@@ -37,6 +37,7 @@
          }
          */
         var rooms = [];
+        var privateMessages = [];
 
         function hideAll() {
             $('.container').children('div').each(function() {
@@ -67,6 +68,7 @@
                     .addClass('btn-primary')
                     .addClass('room-btn');
                 var pass = $('<input>').attr({type:"text", id:"pass", value:"Enter Password"});
+
                 var div = $('<div></div>');
                 div.append(buttonP);
                 div.append(pass);
@@ -100,6 +102,17 @@
             // If we're in the room, show the message
             if (currentRoom !== null && data.roomName === currentRoom.name) {
                 renderMessage(data.message);
+            }
+        });
+        //Personal Messages
+        socketio.on("pm_client", function (data) {
+            // Add the new message to the room
+            personalMessages = data.messages;
+            // If we're the user, show the message
+            for(var i=0; i<personalMessages.length; i++){
+                if(personalMessages[i]['user'] == username){
+                    renderPMessage(personalMessages[i]);
+                }
             }
         });
 
@@ -158,6 +171,12 @@
             document.getElementById("chatlog").appendChild(document.createTextNode(message.sender + ': ' +
                 message.messageText));
         }
+        function renderPMessage(message) {
+            alert("here");
+            document.getElementById("privatemsg").appendChild(document.createElement("hr"));
+            document.getElementById("privatemsg").appendChild(document.createTextNode(message.sender + ': ' +
+                message.messageText));
+        }
 
         function renderUsername(name, button) {
             if(button){
@@ -172,19 +191,50 @@
                     .text("Permanently Ban User")
                     .addClass('btn')
                     .addClass('btn-danger').attr('id', 'ban-button');
+                var inputBox = $('<input>').attr({type:"text", id:"message", value:"Enter Message"});
+                var submitButton =  $('<button></button>')
+                    .text("Send Private Message")
+                    .addClass('btn')
+                    .addClass('btn-primary').attr('id', 'private-button');
                 kickButton.click(function () {
                     kickUser(name, currentRoom.name);
                 });
                 permenentButton.click(function () {
                     banUser(name, currentRoom.name);
                 });
+                submitButton.click(function(){
+                   //Send PM
+                    var message = document.getElementById('message').value;
+                    var user = name;
+                    var sender = username;
+                    sendPM(message, user, sender);
+                });
                 userItem.append(kickButton);
                 userItem.append(permenentButton);
+                userItem.append(inputBox);
+                userItem.append(submitButton);
+                userItem.append('<hr>');
                 $('#user-list').append(userItem);
             }
             else{
-                var userListItem = $('<li></li>').text(name).attr('id', name);
-                $('#user-list').append(userListItem);
+                /*
+                var userItem;
+                if(name != username){
+                    userItem = $('<div></div>').attr('id', name);
+                    var userListItem = $('<li></li>').text(name);
+                    userItem.append(userListItem);
+                    var inputBox = $('<input>').attr({type:"text", id:"message", value:"Enter Message"});
+                    var submitButton =  $('<button></button>')
+                        .text("Send Private Message")
+                        .addClass('btn')
+                        .addClass('btn-primary').attr('id', 'private-button');
+                    userItem.append(submitButton);
+                    userItem.append(inputBox);
+                    userItem.append('<hr>');
+                }
+
+                $('#user-list').append(userItem);
+                */
             }
 
         }
@@ -235,6 +285,15 @@
                 room: room
             });
         }
+        function sendPM(message, user, sender){
+            socketio.emit("pm_server", {
+                pmessage: {
+                    messageText: message,
+                    sender: username,
+                    user: user
+                }
+            });
+        }
 
         function login() {
             username = document.getElementById("loginUsername").value;
@@ -245,13 +304,11 @@
                 alert('Must have a username!');
             }
         }
-
         function loadMessages() {
             $.each(currentRoom.messages, function(index, item) {
                 renderMessage(item);
             });
         }
-
         function loadRooms() {
             socketio.emit('get_rooms_server');
         }
@@ -394,7 +451,6 @@
         <div id="chatlog"></div>
     </div>
 </div>
-
 <script>
     showLoginItems();
 

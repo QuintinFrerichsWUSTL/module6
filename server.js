@@ -21,7 +21,7 @@ app.listen(3456);
 
 var rooms = [];
 
-
+var privateMessages = [];
 var io = socketio.listen(app);
 io.sockets.on("connection", function(socket){
 
@@ -39,6 +39,19 @@ io.sockets.on("connection", function(socket){
                 return
             }
         }
+    });
+    //Private messages
+    socket.on('pm_server', function(data) {
+       // for (var i = 0; i < privateMessages.length; i++) {
+            //if (privateMessages[i].name === room.name) {
+                privateMessages.push(data.pmessage);
+                var newData = {
+                    messages: privateMessages
+                };
+                io.sockets.emit("pm_client", newData);
+                return
+           // }
+        //}
     });
     socket.on('update_banned', function(data){
         console.log("Updating banned");
