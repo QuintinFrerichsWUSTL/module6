@@ -30,12 +30,31 @@ io.sockets.on("connection", function(socket){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === room.name) {
                 rooms[i].messages.push(data.message);
+                //msgLikes = data.likes;
+
                 var newData = {
                     message: data.message,
                     rooms: rooms,
-                    roomName: data.room.name
+                    roomName: data.room.name,
+                    likes:data.likes
                 };
                 io.sockets.emit("message_to_client", newData);
+                return
+            }
+        }
+    });
+    socket.on('update_likes', function(data){
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.room.name) {
+                console.log('Updating users who like', data.username, data.roomName);
+                //Over write old message
+                for(var j=0; j<rooms[i].messages.length; j++){
+                    if(rooms[i].messages[j].messageText == data.message.messageText && rooms[i].messages[j].sender == data.message.sender){
+                        
+                    }
+                }
+                rooms[i].messages.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
                 return
             }
         }

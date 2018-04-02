@@ -32,8 +32,9 @@
 
          Structure for message:
          var message = {
-            messageText
-            sender
+            messageText,
+            sender,
+            likes
          }
          */
         var rooms = [];
@@ -170,6 +171,40 @@
             document.getElementById("chatlog").appendChild(document.createElement("hr"));
             document.getElementById("chatlog").appendChild(document.createTextNode(message.sender + ': ' +
                 message.messageText));
+            var likeButton = $('<button></button>')
+                .text("Like this Message")
+                .addClass('btn')
+                .addClass('btn-primary').attr('id', 'like-button');
+            //Construct string for likes
+            var likes = $('<p></p>').text("People who like this message: ").attr('id', 'like-count');
+            likeButton.click(function(){
+                var hasLiked = false;
+                for(var i=0; i<message.likes.length; i++){
+                    if(message[i] === username){
+                        hasLiked = true;
+                    }
+
+                }
+                if(hasLiked){
+                    alert("You have already liked this message!");
+                }
+                else{
+                    message.likes.push(username);
+                    var data1 = {msg: message, room: currentRoom};
+                    socketio.emit('update_likes', data1);
+                    if(message.likes.length>=1){
+                        $('.like-count').text += ","+ username;
+                    }
+                    else{
+                        $('.like-count').text += username;
+                    }
+
+
+                }
+
+            });
+            $('#chatlog').append(likes);
+            $('#chatlog').append(likeButton);
         }
         function renderPMessage(message) {
             alert("here");
@@ -295,7 +330,8 @@
             socketio.emit("message_to_server", {
                 message: {
                     messageText: message,
-                    sender: username
+                    sender: username,
+                    likes: []
                 },
                 room: room
             });
