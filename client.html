@@ -10,6 +10,18 @@
         .row {
             margin-top: 30px;
         }
+
+        #rooms-list {
+            margin-top: 30px;
+        }
+
+        .room-btn {
+            margin-bottom: 20px;
+        }
+
+        li {
+            list-style: none;
+        }
     </style>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
@@ -54,7 +66,7 @@
 
         function showMenuItems() {
             hideAll();
-            $('.row').show();
+            $('#menuItems').show();
         }
 
         function showMessagingItems() {
@@ -69,8 +81,7 @@
                     .addClass('btn')
                     .addClass('btn-primary')
                     .addClass('room-btn');
-                var pass = $('<input>').attr({type:"text", id:"pass", value:"Enter Password"});
-
+                var pass = $('<input>').attr({type:"text", id:"pass", placeholder:"Enter Password"});
                 var div = $('<div></div>');
                 div.append(buttonP);
                 div.append(pass);
@@ -178,6 +189,7 @@
 
             loadMessages();
         });
+
         socketio.on('get_rooms_client', function(data) {
             rooms = data;
             $.each(rooms, function(index, item) {
@@ -262,7 +274,7 @@
         function renderUsername(name, button) {
             if(button){
                 var userItem = $('<div></div>').attr('id', name);
-                var userListItem = $('<li></li>').text(name);
+                var userListItem = $('<li class=""></li>').text(name);
                 userItem.append(userListItem);
                 var kickButton =  $('<button></button>')
                     .text("Temporarily Kick User")
@@ -397,6 +409,7 @@
             if (username !== '') {
                 socketio.emit('new_server_login', {userId: userId, username: username});
                 loadRooms();
+                $('#welcome').text('Welcome ' + username);
                 showMenuItems();
             } else {
                 alert('Must have a username!');
@@ -519,6 +532,10 @@
             var password = null;
             if(isPrivate){
                password = document.getElementById('password').value;
+               if (password === '') {
+                   alert('Private rooms must have a password!');
+                   return
+               }
             }
             var room = {
                 name: name,
@@ -541,10 +558,10 @@
         <input type="text" id="loginUsername">
         <button class="btn btn-primary" id="loginButton">Login</button>
     </div>
-
-    <div class="row">
+    <div id="menuItems">
+        <h1 id="welcome" class="text-center">Welcome Username</h1>
         <div class="col">
-            <h1 class="display-4">Create</h1>
+            <h1 class="display-4">Create a Room</h1>
             <hr>
             <div id="create-room">
                 <label for="room-name">Name</label>
@@ -555,15 +572,14 @@
                 <br>
                 <label for="private-radio">Private</label>
                 <input type="radio" id="private-radio" name="public-private" value="private">
-                <input type="text" id="password" value="Private Password">
+                <input type="text" id="password" placeholder="Enter a password">
                 <br>
                 <button class="btn btn-primary" id="create-room-btn">Create room</button>
             </div>
         </div>
-        <div class="col">
-            <div id="rooms-list">
-                <h1 class="display-4 text-center">Available</h1>
-            </div>
+        <div id="rooms-list">
+            <h1 class="display-4">Available</h1>
+            <hr>
         </div>
     </div>
     <div class="row">
