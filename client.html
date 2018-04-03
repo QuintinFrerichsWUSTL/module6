@@ -123,18 +123,32 @@
                 renderMessage(data.message);
             }
         });
+        socketio.on("pmessage_to_client", function (data) {
+            // Add the new message to the room
+            rooms = data.rooms;
+            // If we're in the room, show the message
+            if (currentRoom !== null && data.roomName === currentRoom.name) {
+                renderPMessage(data.pmessage);
+            }
+        });
         //Personal Messages
+        /*
         socketio.on("pm_client", function (data) {
             // Add the new message to the room
             personalMessages = data.messages;
             // If we're the user, show the message
+            //FIXME
+            var parent = document.getElementById("privatechatmessages");
+            while(parent.firstChild){
+                parent.removeChild(parent.firstChild);
+            }
             for(var i=0; i<personalMessages.length; i++){
                 if(personalMessages[i]['user'] == username){
                     renderPMessage(personalMessages[i]);
                 }
             }
         });
-
+*/
         socketio.on('enter_room_client', function(data) {
             // Add the new user to the room
             rooms = data.rooms;
@@ -146,6 +160,7 @@
                 })[0];
                 showMessagingItems();
                 loadMessages(); // Load and render messages
+                loadPMessages();
                 loadUsers(); // Load and render users
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room and someone else joined, render
@@ -180,7 +195,7 @@
         });
 
         socketio.on('refresh_likes_client', function(data){
-            rooms = data;
+            rooms = data.rooms;
             //Erase messages
             var parent = document.getElementById("chatlog");
             while(parent.firstChild){
@@ -188,6 +203,7 @@
             }
 
             loadMessages();
+
         });
 
         socketio.on('get_rooms_client', function(data) {
@@ -211,6 +227,7 @@
             if (data.exitingUser === username) {
                 $("#chatlog").empty();
                 $('#user-list').empty();
+                $("#privatechatmessages").empty();
                 currentRoom = null;
                 showMenuItems();
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
@@ -269,6 +286,13 @@
             document.getElementById("privatemsg").appendChild(document.createElement("hr"));
             document.getElementById("privatemsg").appendChild(document.createTextNode(message.sender + ': ' +
                 message.messageText));
+            if(message.user == username){
+                document.getElementById("privatechatmessages").appendChild(document.createElement("hr"));
+                document.getElementById("privatechatmessages").appendChild(document.createTextNode(message.sender + ': ' +
+                    message.messageText));
+            }
+
+
         }
 
         function renderUsername(name, button) {
@@ -297,10 +321,15 @@
                 });
                 submitButton.click(function(){
                    //Send PM
+                    alert("Button pressed");
                     var message = document.getElementById('message').value;
                     var user = name;
                     var sender = username;
-                    sendPM(message, user, sender);
+                    alert("After");
+                    alert("Message" + message);
+                    alert("User" + user);
+                    alert("Sender " + sender);
+                    sendPM(message, user, sender, currentRoom);
                 });
                 userItem.append(kickButton);
                 userItem.append(permenentButton);
@@ -321,6 +350,17 @@
                         .text("Send Private Message")
                         .addClass('btn')
                         .addClass('btn-primary').attr('id', 'private-button');
+                    submitButton.click(function(){
+                        //Send PM
+                        alert("Button pressed");
+                        var message = document.getElementById('message').value;
+                        var user = name;
+                        var sender = username;
+                        //alert("Message" + message);
+                       // alert("User" + user);
+                       //alert("Sender " + sender);
+                        sendPM(message, user, sender, currentRoom);
+                    });
                     userItem.append(submitButton);
                     userItem.append(inputBox);
                     userItem.append('<hr>');
@@ -341,7 +381,7 @@
             var deleteItem =  document.getElementById(user);
             deleteItem.remove();
             var banString = "You have been kicked from the chat room " + roomName;
-            sendPM(banString, user, "Admin");
+            sendPM(banString, user, "Admin", currentRoom);
             //Alert the user
 
 
@@ -366,7 +406,7 @@
             deleteItem.remove();
             //Alert the user
             var banString = "You have been banned from the chat room " + roomName;
-            sendPM(banString, user, "Admin");
+            sendPM(banString, user, "Admin", currentRoom);
             //User cannot come back
         }
         function loadUsers() {
@@ -394,13 +434,14 @@
                 room: room
             });
         }
-        function sendPM(message, user, sender){
+        function sendPM(message, user, sender, room){
             socketio.emit("pm_server", {
                 pmessage: {
                     messageText: message,
                     sender: sender,
                     user: user
-                }
+                },
+                room: room
             });
         }
 
@@ -418,6 +459,11 @@
         function loadMessages() {
             $.each(currentRoom.messages, function(index, item) {
                 renderMessage(item);
+            });
+        }
+        function loadPMessages() {
+            $.each(currentRoom.privateMessages, function(index, item) {
+                renderPMessage(item);
             });
         }
         function loadRooms() {
@@ -545,7 +591,8 @@
                 users: [],
                 kicked: [],
                 banned: [],
-                messages: []
+                messages: [],
+                privateMessages: []
             };
             socketio.emit('new_room_server', room);
         }
@@ -598,6 +645,12 @@
         <p>Users currently in this chat: </p>
         <div id="user-list"></div>
         <div id="chatlog"></div>
+        <p>
+            Private Messages
+        </p>
+        <div id = "privatechatmessages">
+
+        </div>
     </div>
 </div>
 <script>
