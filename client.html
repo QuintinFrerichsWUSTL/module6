@@ -63,7 +63,6 @@
 
         function createRoomButton(roomName, private) {
             if(private){
-                alert("Private room");
                 var buttonP = $('<button></button>')
                     .text(roomName)
                     .addClass('btn')
@@ -78,11 +77,12 @@
                 $('#rooms-list').append($('<br>'));
                 buttonP.click(function () {
                     var input = document.getElementById("pass");
+                    //socketio.emit('update_rooms');
+                    alert("Password set "+rooms[0]['password']);
                     enterPrivateRoom(roomName, input.value);
                 });
             }
             else{
-                alert("Public room");
                 var button = $('<button></button>')
                     .text(roomName)
                     .addClass('btn')
@@ -155,6 +155,7 @@
             loadMessages();
         });
         socketio.on('get_rooms_client', function(data) {
+            alert("Get rooms");
             rooms = data;
             $.each(rooms, function(index, item) {
                 createRoomButton(item.name, item.private);
@@ -163,6 +164,8 @@
 
         socketio.on('new_room_client', function(room) {
             console.log('New room: ', room);
+            //FIXME
+            rooms.push(room);
             createRoomButton(room.name, room.private);
         });
 

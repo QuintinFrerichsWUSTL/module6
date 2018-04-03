@@ -92,6 +92,12 @@ io.sockets.on("connection", function(socket){
             }
         }
     });
+    socket.on('update_rooms', function(){
+
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+
+    });
     socket.on('update_kicked', function(data){
         console.log("Updating kicked");
         for (var i = 0; i < rooms.length; i++) {
