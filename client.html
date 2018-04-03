@@ -145,6 +145,29 @@
         socketio.on('refresh_rooms_client', function(data){
            rooms = data;
         });
+        socketio.on('refresh_banned_client', function(data){
+
+            rooms = data.rooms;
+            //alert(data.bannedUser);
+           // alert(username);
+            if(data.bannedUser == username){
+                alert("show menu");
+                showMenuItems();
+
+            }
+        });
+        socketio.on('refresh_kicked_client', function(data){
+
+            rooms = data.rooms;
+           // alert(data.bannedUser);
+         //   alert(username);
+            if(data.kickedUser == username){
+                alert("show menu");
+                showMenuItems();
+
+            }
+        });
+
         socketio.on('refresh_likes_client', function(data){
             rooms = data;
             //Erase messages

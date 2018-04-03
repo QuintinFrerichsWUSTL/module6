@@ -34,13 +34,13 @@ Array.prototype.remove = function(from, to) {
 io.sockets.on("connection", function(socket){
 
     socket.emit('login', socket.id);
-
+/*
     socket.on('new_server_login', function(data) {
         // Map userIds to usernames
         const userId = data.userId;
         map[userId] = data.username;
     });
-
+*/
     socket.on('message_to_server', function(data) {
         var room = data.room;
         for (var i = 0; i < rooms.length; i++) {
@@ -94,7 +94,11 @@ io.sockets.on("connection", function(socket){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
                 rooms[i].banned.push(data.user);
-                io.sockets.emit('refresh_rooms_client', rooms);
+                var newData = {
+                    bannedUser: data.user,
+                    rooms: rooms
+                }
+                io.sockets.emit('refresh_banned_client', newData);
                 return
             }
         }
@@ -108,7 +112,12 @@ io.sockets.on("connection", function(socket){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
                 rooms[i].kicked.push(data.user);
-                io.sockets.emit('refresh_rooms_client', rooms);
+                io.sockets.emit('refresh_kicked_client', rooms);
+                var newData = {
+                    kickedUser: data.user,
+                    rooms: rooms
+                }
+                io.sockets.emit('refresh_kicked_client', rooms);
                 return
             }
         }
@@ -119,6 +128,10 @@ io.sockets.on("connection", function(socket){
             if (rooms[i].name === data.roomName) {
                 var index = rooms[i].kicked.indexOf(data.user);
                 rooms[i].kicked.splice(index, 1);
+                var newData = {
+                    bannedUser: data.user,
+                    rooms: rooms
+                }
                 io.sockets.emit('refresh_rooms_client', rooms);
                 return
             }
