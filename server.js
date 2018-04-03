@@ -21,7 +21,7 @@ app.listen(3456);
 
 var rooms = [];
 var map = {};
-
+var privateMessages = [];
 var io = socketio.listen(app);
 io.sockets.on("connection", function(socket){
 
@@ -37,17 +37,99 @@ io.sockets.on("connection", function(socket){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === room.name) {
                 rooms[i].messages.push(data.message);
+                //msgLikes = data.likes;
+
                 var newData = {
                     message: data.message,
                     rooms: rooms,
-                    roomName: data.room.name
+                    roomName: data.room.name,
                 };
                 io.sockets.emit("message_to_client", newData);
                 return
             }
         }
     });
+    socket.on('update_likes', function(data){
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.room.name) {
+                console.log('Updating users who like', data.msg.messageText, data.room.name);
+                //Over write old message
+                var present = false;
+                if(rooms[i].messages.length > 0){
+                    for(var j=0; j<rooms[i].messages.length; j++){
 
+                        if(rooms[i].messages[j].messageText == data.msg.messageText && rooms[i].messages[j].sender == data.msg.sender){
+                            console.log("Is present");
+                            present = true;
+                            rooms[i].messages[j] = data.msg;
+                            console.log(rooms[i].messages[j].likes[0]);
+                        }
+                    }
+                }
+                if(!present){
+                    console.log("Not present");
+                    rooms[i].messages.push(data.msg);
+                }
+                io.sockets.emit('refresh_likes_client', rooms);
+                return
+            }
+        }
+    });
+    //Private messages
+    socket.on('pm_server', function(data) {
+       // for (var i = 0; i < privateMessages.length; i++) {
+            //if (privateMessages[i].name === room.name) {
+                privateMessages.push(data.pmessage);
+                var newData = {
+                    messages: privateMessages
+                };
+                io.sockets.emit("pm_client", newData);
+                return
+           // }
+        //}
+    });
+    socket.on('update_banned', function(data){
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+
+                console.log('Banning User From Room', data.username, data.roomName);
+                rooms[i].banned.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
+    socket.on('update_rooms', function(){
+
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+
+    });
+    socket.on('update_kicked', function(data){
+        console.log("Updating kicked");
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+
+                console.log('Kicking User From Room', data.username, data.roomName);
+                rooms[i].kicked.push(data.user);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
+    socket.on('update_unkicked', function(data){
+        console.log("Updating kicked");
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === data.roomName) {
+
+                console.log('Unkicking User From Room', data.username, data.roomName);
+                var index = rooms[i].kicked.indexOf(data.user);
+                rooms[i].kicked.splice(index, 1);
+                io.sockets.emit('refresh_rooms_client', rooms);
+                return
+            }
+        }
+    });
     socket.on('get_rooms_server', function() {
        socket.emit('get_rooms_client', rooms);
     });
@@ -55,7 +137,13 @@ io.sockets.on("connection", function(socket){
     socket.on('enter_room_server', function(data) {
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
-                rooms[i].users.push(data.newUser);
+                var duplicate = false;
+                for(var j=0; j<rooms[i].users.length; j++){
+                    if(rooms[i].users[j] === data.newUser){
+                        duplicate = true;
+                    }
+                }
+                if(!duplicate){rooms[i].users.push(data.newUser);}
                 console.log('Adding user to room', data.newUser, data.roomName);
                 var newData = {
                     rooms: rooms,
