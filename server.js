@@ -21,7 +21,7 @@ app.listen(3456);
 
 var rooms = [];
 var map = {};
-var privateMessages = [];
+//var privateMessages = [];
 var io = socketio.listen(app);
 
 // Array Remove - By John Resig (MIT Licensed) - taken from https://stackoverflow.com/questions/500606/deleting-array-elements-in-javascript-delete-vs-splice
@@ -60,6 +60,7 @@ io.sockets.on("connection", function(socket){
     });
     socket.on('update_likes', function(data){
         for (var i = 0; i < rooms.length; i++) {
+            var messageBack;
             if (rooms[i].name === data.room.name) {
                 //Over write old message
                 var present = false;
@@ -69,25 +70,40 @@ io.sockets.on("connection", function(socket){
                         if(rooms[i].messages[j].messageText == data.msg.messageText && rooms[i].messages[j].sender == data.msg.sender){
                             present = true;
                             rooms[i].messages[j] = data.msg;
+                            messageBack = rooms[i].messages[j];
                         }
                     }
                 }
                 if(!present){
                     rooms[i].messages.push(data.msg);
                 }
-                io.sockets.emit('refresh_likes_client', rooms);
+                var newData = {
+                    message: messageBack,
+                    rooms: rooms,
+                    roomName: data.room.name
+                }
+                io.sockets.emit('refresh_likes_client', newData);
                 return
             }
         }
     });
     //Private messages
     socket.on('pm_server', function(data) {
-        privateMessages.push(data.pmessage);
-        var newData = {
-            messages: privateMessages
-        };
-        io.sockets.emit("pm_client", newData);
-        return
+        var room = data.room;
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].name === room.name) {
+                rooms[i].privateMessages.push(data.pmessage);
+                //msgLikes = data.likes;
+
+                var newData = {
+                    pmessage: data.pmessage,
+                    rooms: rooms,
+                    roomName: data.room.name,
+                };
+                io.sockets.emit("pmessage_to_client", newData);
+                return
+            }
+        }
 
     });
     socket.on('update_banned', function(data){
