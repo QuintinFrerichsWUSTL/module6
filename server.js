@@ -23,13 +23,22 @@ var rooms = [];
 var map = {};
 var privateMessages = [];
 var io = socketio.listen(app);
+
+// Array Remove - By John Resig (MIT Licensed) - taken from https://stackoverflow.com/questions/500606/deleting-array-elements-in-javascript-delete-vs-splice
+Array.prototype.remove = function(from, to) {
+    var rest = this.slice((to || from) + 1 || this.length);
+    this.length = from < 0 ? this.length + from : from;
+    return this.push.apply(this, rest);
+};
+
 io.sockets.on("connection", function(socket){
 
     socket.emit('login', socket.id);
 
     socket.on('new_server_login', function(data) {
         // Map userIds to usernames
-        map.data.userId = data.username;
+        const userId = data.userId;
+        map[userId] = data.username;
     });
 
     socket.on('message_to_server', function(data) {
@@ -52,22 +61,18 @@ io.sockets.on("connection", function(socket){
     socket.on('update_likes', function(data){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.room.name) {
-                console.log('Updating users who like', data.msg.messageText, data.room.name);
                 //Over write old message
                 var present = false;
                 if(rooms[i].messages.length > 0){
                     for(var j=0; j<rooms[i].messages.length; j++){
 
                         if(rooms[i].messages[j].messageText == data.msg.messageText && rooms[i].messages[j].sender == data.msg.sender){
-                            console.log("Is present");
                             present = true;
                             rooms[i].messages[j] = data.msg;
-                            console.log(rooms[i].messages[j].likes[0]);
                         }
                     }
                 }
                 if(!present){
-                    console.log("Not present");
                     rooms[i].messages.push(data.msg);
                 }
                 io.sockets.emit('refresh_likes_client', rooms);
@@ -77,22 +82,17 @@ io.sockets.on("connection", function(socket){
     });
     //Private messages
     socket.on('pm_server', function(data) {
-       // for (var i = 0; i < privateMessages.length; i++) {
-            //if (privateMessages[i].name === room.name) {
-                privateMessages.push(data.pmessage);
-                var newData = {
-                    messages: privateMessages
-                };
-                io.sockets.emit("pm_client", newData);
-                return
-           // }
-        //}
+        privateMessages.push(data.pmessage);
+        var newData = {
+            messages: privateMessages
+        };
+        io.sockets.emit("pm_client", newData);
+        return
+
     });
     socket.on('update_banned', function(data){
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
-
-                console.log('Banning User From Room', data.username, data.roomName);
                 rooms[i].banned.push(data.user);
                 io.sockets.emit('refresh_rooms_client', rooms);
                 return
@@ -100,29 +100,23 @@ io.sockets.on("connection", function(socket){
         }
     });
     socket.on('update_rooms', function(){
-
-                io.sockets.emit('refresh_rooms_client', rooms);
-                return
-
+        io.sockets.emit('refresh_rooms_client', rooms);
+        return
     });
+
     socket.on('update_kicked', function(data){
-        console.log("Updating kicked");
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
-
-                console.log('Kicking User From Room', data.username, data.roomName);
                 rooms[i].kicked.push(data.user);
                 io.sockets.emit('refresh_rooms_client', rooms);
                 return
             }
         }
     });
+
     socket.on('update_unkicked', function(data){
-        console.log("Updating kicked");
         for (var i = 0; i < rooms.length; i++) {
             if (rooms[i].name === data.roomName) {
-
-                console.log('Unkicking User From Room', data.username, data.roomName);
                 var index = rooms[i].kicked.indexOf(data.user);
                 rooms[i].kicked.splice(index, 1);
                 io.sockets.emit('refresh_rooms_client', rooms);
@@ -130,6 +124,7 @@ io.sockets.on("connection", function(socket){
             }
         }
     });
+
     socket.on('get_rooms_server', function() {
        socket.emit('get_rooms_client', rooms);
     });
@@ -144,13 +139,11 @@ io.sockets.on("connection", function(socket){
                     }
                 }
                 if(!duplicate){rooms[i].users.push(data.newUser);}
-                console.log('Adding user to room', data.newUser, data.roomName);
                 var newData = {
                     rooms: rooms,
                     newUser: data.newUser,
                     roomName: data.roomName
                 };
-                console.log('Entering room', data.roomName);
                 io.sockets.emit('enter_room_client', newData);
                 return
             }
@@ -168,7 +161,6 @@ io.sockets.on("connection", function(socket){
                     exitingUser: data.exitingUser,
                     roomName: data.room.name
                 };
-                console.log('Sending new Data', newData);
                 io.sockets.emit('leave_room_client', newData);
                 return
             }
@@ -177,7 +169,6 @@ io.sockets.on("connection", function(socket){
 
     socket.on('new_room_server', function(room) {
         rooms.push(room);
-        console.log('Created room', room.name);
         io.sockets.emit('new_room_client', room);
     });
 
@@ -190,8 +181,24 @@ io.sockets.on("connection", function(socket){
         }
     });
 
-    socket.on('diconnect', function() {
-        io.sockets.emit('disconnect_client', socket.id);
+    socket.on('disconnect', function() {
+        const username = map[socket.id];
+        for (var i = 0; i < rooms.length; i++) {
+            for (var j = 0; j < rooms[i].users.length; j++) {
+                // Get the username of the person in that room
+                var roomUsername = rooms[i].users[j];
+                if (roomUsername === username) {
+                    rooms[i].users.remove(j);
+                    var newData = {
+                        rooms: rooms,
+                        exitingUser: username,
+                        roomName: rooms[i].name
+                    };
+                    console.log('Detected disconnect', newData);
+                    io.sockets.emit('leave_room_client', newData);
+                }
+            }
+        }
     });
 
 

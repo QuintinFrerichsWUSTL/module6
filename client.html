@@ -104,10 +104,6 @@
             userId = id;
         });
 
-        socketio.on('disconnect_client', function(id) {
-           if
-        });
-
         socketio.on("message_to_client", function (data) {
             // Add the new message to the room
             rooms = data.rooms;
@@ -140,9 +136,6 @@
                 showMessagingItems();
                 loadMessages(); // Load and render messages
                 loadUsers(); // Load and render users
-                $('#leaveRoom').click(function () {
-                    leaveRoom();
-                });
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room and someone else joined, render
                 var shouldRender = (data.newUser != currentRoom.creator) && (username == currentRoom.creator);
@@ -187,8 +180,7 @@
                 showMenuItems();
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room, remove that user from user list
-                alert("Leaving users");
-                $('#' + data.exitingUser).empty();
+                $('#' + data.exitingUser).empty().remove();
             }
         });
 
@@ -415,7 +407,6 @@
                     }
                 }
             }
-            alert("This" + isKicked);
             if(!isBanned && !isKicked){
                 var data = {
                     roomName: roomName,
@@ -575,6 +566,10 @@
 
     $('#loginButton').click(function () {
         login();
+    });
+
+    $('#leaveRoom').click(function () {
+        leaveRoom();
     });
 
     $('#sendMessageButton').click(function (e) {
