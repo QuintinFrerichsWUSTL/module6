@@ -82,6 +82,7 @@
                 });
             }
             else{
+                alert("Public room");
                 var button = $('<button></button>')
                     .text(roomName)
                     .addClass('btn')
@@ -162,19 +163,25 @@
 
         socketio.on('new_room_client', function(room) {
             console.log('New room: ', room);
-            createRoomButton(room.name);
+            createRoomButton(room.name, room.private);
         });
 
         socketio.on('leave_room_client', function(data) {
+            alert("Leave room client");
+            alert("Current room" + currentRoom);
+            alert("Data name" + data.roomName);
+            alert("Current name" + currentRoom.name);
             // Update rooms
             rooms = data.rooms;
             // If we just exited
             if (data.exitingUser === username) {
+                alert("Existing user");
                 $("#chatlog").empty();
                 $('#user-list').empty();
                 showMenuItems();
             } else if (currentRoom !== null && data.roomName === currentRoom.name) {
                 // If we're in the room, remove that user from user list
+                alert("Leaving users");
                 $('#' + data.exitingUser).empty();
             }
         });
@@ -426,7 +433,13 @@
         function enterPrivateRoom(roomName, password) {
             var isBanned = false;
             var isKicked = false;
-            //var thePass =
+            var thePass;
+            for(var i =0; i<rooms.length; i++){
+                               if(rooms[i]['name'] === roomName){
+                                        var thePass = rooms[i]['password'];
+                                    }
+
+                                }
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
@@ -451,7 +464,7 @@
                 socketio.emit('enter_room_server', data);
             }
             else if(password != thePass){
-                alert("Wrong Password!");
+                alert("Wrong Password!" + password + " " + thePass);
             }
             else if(isBanned){
                 alert("You have been banned from this chatroom");

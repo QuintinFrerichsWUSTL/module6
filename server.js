@@ -146,6 +146,7 @@ io.sockets.on("connection", function(socket){
 
     socket.on('leave_room_server', function(data) {
         for (var i = 0; i < rooms.length; i++) {
+            console.log("Leaving room");
             if (rooms[i].name === data.room.name) {
                 rooms[i].users = rooms[i].users.filter(function(user) {
                     return user !== data.exitingUser;
@@ -153,8 +154,9 @@ io.sockets.on("connection", function(socket){
                 var newData = {
                     rooms: rooms,
                     exitingUser: data.exitingUser,
-                    roomName: data.roomName
+                    roomName: data.room
                 };
+                console.log(newData.roomName);
                 io.sockets.emit('leave_room_client', newData);
                 return
             }
