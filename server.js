@@ -34,13 +34,13 @@ Array.prototype.remove = function(from, to) {
 io.sockets.on("connection", function(socket){
 
     socket.emit('login', socket.id);
-/*
+
     socket.on('new_server_login', function(data) {
         // Map userIds to usernames
         const userId = data.userId;
         map[userId] = data.username;
     });
-*/
+
     socket.on('message_to_server', function(data) {
         var room = data.room;
         for (var i = 0; i < rooms.length; i++) {
@@ -60,30 +60,23 @@ io.sockets.on("connection", function(socket){
     });
     socket.on('update_likes', function(data){
         for (var i = 0; i < rooms.length; i++) {
-            var messageBack;
+            var messageBack = null;
             if (rooms[i].name === data.room.name) {
-                //Over write old message
-                var present = false;
-                if(rooms[i].messages.length > 0){
-                    for(var j=0; j<rooms[i].messages.length; j++){
-
-                        if(rooms[i].messages[j].messageText == data.msg.messageText && rooms[i].messages[j].sender == data.msg.sender){
-                            present = true;
-                            rooms[i].messages[j] = data.msg;
-                            messageBack = rooms[i].messages[j];
-                        }
+                for(var j = 0; j < rooms[i].messages.length; j++){
+                    if (rooms[i].messages[j].messageText === data.msg.messageText
+                        && rooms[i].messages[j].sender === data.msg.sender) {
+                        rooms[i].messages[j] = data.msg;
+                        messageBack = rooms[i].messages[j];
                     }
+                    var newData = {
+                        message: messageBack,
+                        rooms: rooms,
+                        roomName: data.room.name,
+                        currentRoom: rooms[i]
+                    };
+                    io.sockets.emit('refresh_likes_client', newData);
+                    return
                 }
-                if(!present){
-                    rooms[i].messages.push(data.msg);
-                }
-                var newData = {
-                    message: messageBack,
-                    rooms: rooms,
-                    roomName: data.room.name
-                }
-                io.sockets.emit('refresh_likes_client', newData);
-                return
             }
         }
     });
@@ -212,11 +205,12 @@ io.sockets.on("connection", function(socket){
 
     socket.on('disconnect', function() {
         const username = map[socket.id];
+        console.log(username);
         for (var i = 0; i < rooms.length; i++) {
             for (var j = 0; j < rooms[i].users.length; j++) {
                 // Get the username of the person in that room
                 var roomUsername = rooms[i].users[j];
-                if (roomUsername === username) {
+                if (roomUsername == username) {
                     rooms[i].users.remove(j);
                     var newData = {
                         rooms: rooms,
@@ -225,6 +219,7 @@ io.sockets.on("connection", function(socket){
                     };
                     console.log('Detected disconnect', newData);
                     io.sockets.emit('leave_room_client', newData);
+                    return
                 }
             }
         }

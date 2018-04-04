@@ -7,6 +7,10 @@
             background-color: orange;
         }
 
+        #leaveRoom {
+            display: block;
+        }
+
         .row {
             margin-top: 30px;
         }
@@ -22,6 +26,20 @@
         li {
             list-style: none;
         }
+
+        #private-messages {
+            margin-top: 60px;
+        }
+
+        #user-list {
+            margin-top: 40px;
+        }
+
+        #messaging-center {
+            margin-top: 20px;
+        }
+
+
     </style>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
@@ -89,8 +107,6 @@
                 $('#rooms-list').append($('<br>'));
                 buttonP.click(function () {
                     var input = document.getElementById("pass");
-                    //socketio.emit('update_rooms');
-                    alert("Password set "+rooms[0]['password']);
                     enterPrivateRoom(roomName, input.value);
                 });
             }
@@ -172,38 +188,31 @@
            rooms = data;
         });
         socketio.on('refresh_banned_client', function(data){
-
             rooms = data.rooms;
-            //alert(data.bannedUser);
-           // alert(username);
             if(data.bannedUser == username){
                 alert("show menu");
                 showMenuItems();
-
             }
         });
-        socketio.on('refresh_kicked_client', function(data){
 
+        socketio.on('refresh_kicked_client', function(data){
             rooms = data.rooms;
-           // alert(data.bannedUser);
-         //   alert(username);
             if(data.kickedUser == username){
-                alert("show menu");
                 showMenuItems();
 
             }
         });
 
-        socketio.on('refresh_likes_client', function(data){
+        socketio.on('refresh_likes_client', function(data) {
+            console.log('Refresh likes', data);
+            console.log('Current room', currentRoom);
             rooms = data.rooms;
-            //Erase messages
-            var parent = document.getElementById("chatlog");
-            while(parent.firstChild){
-                parent.removeChild(parent.firstChild);
+            // Erase messages if we're in this room
+            if (currentRoom.name === data.roomName) {
+                currentRoom = data.currentRoom;
+                $('#chatlog').empty();
             }
-
             loadMessages();
-
         });
 
         socketio.on('get_rooms_client', function(data) {
@@ -245,44 +254,33 @@
                 .addClass('btn')
                 .addClass('btn-primary').attr('id', 'like-button');
             //Construct string for likes
-            var likes;
-            var likeString = "People who like this message: ";
-            if(message.likes.length>=1){
-                alert("There are likes");
-
-                likeString += message.likes[0];
-                for(var i =1; i<message.likes.length; i++){
-
-                    likeString += ", "+message.likes[i];
+            var likeString = "Likes: ";
+            for (var i = 0; i < message.likes.length; i++) {
+                likeString += message.likes[i];
+                if (i < message.likes.length - 1) {
+                    likeString += ", ";
                 }
-
             }
+            console.log('Likestring', likeString);
             likeButton.click(function(){
-                var hasLiked = false;
                 for(var i=0; i<message.likes.length; i++){
-                    if(message.likes[i] == username){
-                        hasLiked = true;
+                    if(message.likes[i] === username){
+                        alert("You have already liked this message!");
+                        return
                     }
-
                 }
-                if(hasLiked){
-                    alert("You have already liked this message!");
-                }
-                else{
-                    alert("Have not liked");
-                    message.likes.push(username);
-                    var data1 = {msg: message, room: currentRoom};
-                    socketio.emit('update_likes', data1);
-
-                }
-
+                message.likes.push(username);
+                var newData = {
+                    msg: message,
+                    room: currentRoom
+                };
+                socketio.emit('update_likes', newData);
             });
-            likes = $('<p></p>').text(likeString).attr('id', 'like-count');
+            var likes = $('<p></p>').text(likeString);
             $('#chatlog').append(likes);
             $('#chatlog').append(likeButton);
         }
         function renderPMessage(message) {
-            alert("here");
             document.getElementById("privatemsg").appendChild(document.createElement("hr"));
             document.getElementById("privatemsg").appendChild(document.createTextNode(message.sender + ': ' +
                 message.messageText));
@@ -291,12 +289,10 @@
                 document.getElementById("privatechatmessages").appendChild(document.createTextNode(message.sender + ': ' +
                     message.messageText));
             }
-
-
         }
 
         function renderUsername(name, button) {
-            if(button){
+            if (button) {
                 var userItem = $('<div></div>').attr('id', name);
                 var userListItem = $('<li class=""></li>').text(name);
                 userItem.append(userListItem);
@@ -321,14 +317,9 @@
                 });
                 submitButton.click(function(){
                    //Send PM
-                    alert("Button pressed");
                     var message = document.getElementById('message').value;
                     var user = name;
                     var sender = username;
-                    alert("After");
-                    alert("Message" + message);
-                    alert("User" + user);
-                    alert("Sender " + sender);
                     sendPM(message, user, sender, currentRoom);
                 });
                 userItem.append(kickButton);
@@ -337,9 +328,7 @@
                 userItem.append(submitButton);
                 userItem.append('<hr>');
                 $('#user-list').append(userItem);
-            }
-            else{
-
+            } else {
                 var userItem;
                 if(name != username){
                     userItem = $('<div></div>').attr('id', name);
@@ -352,27 +341,19 @@
                         .addClass('btn-primary').attr('id', 'private-button');
                     submitButton.click(function(){
                         //Send PM
-                        alert("Button pressed");
                         var message = document.getElementById('message').value;
                         var user = name;
                         var sender = username;
-                        //alert("Message" + message);
-                       // alert("User" + user);
-                       //alert("Sender " + sender);
                         sendPM(message, user, sender, currentRoom);
                     });
                     userItem.append(submitButton);
                     userItem.append(inputBox);
                     userItem.append('<hr>');
                 }
-
                 $('#user-list').append(userItem);
-
             }
-
         }
         function kickUser(user, roomName){
-            alert("Kick" + user);
             var data = {
                 roomName: roomName,
                 user: user
@@ -382,20 +363,16 @@
             deleteItem.remove();
             var banString = "You have been kicked from the chat room " + roomName;
             sendPM(banString, user, "Admin", currentRoom);
-            //Alert the user
-
-
-            //Make it so the user can come back
         }
+
         function unkickUser(user, roomName){
-            alert("Kick" + user);
             var data = {
                 roomName: roomName,
                 user: user
             };
             socketio.emit('update_kicked', data);
-
         }
+
         function banUser(user, roomName){
             var data = {
                 roomName: roomName,
@@ -508,23 +485,23 @@
             else if(isBanned){
                 alert("You have been banned from this chatroom!")
             }
-            else{}
         }
+
         function enterPrivateRoom(roomName, password) {
             var isBanned = false;
             var isKicked = false;
             var thePass;
             for(var i =0; i<rooms.length; i++){
                                if(rooms[i]['name'] === roomName){
-                                        var thePass = rooms[i]['password'];
+                                        thePass = rooms[i]['password'];
                                     }
 
                                 }
             var theRoom = rooms.filter(function(room) {
                 return room.name === roomName;
             })[0];
-            if(theRoom!= null){
-                for(var i=0; i<theRoom.banned.length; i++){
+            if(theRoom !== null){
+                for(var i = 0; i < theRoom.banned.length; i++){
                     if(theRoom.banned[i] === username){
                         isBanned = true;
                     }
@@ -544,7 +521,7 @@
                 socketio.emit('enter_room_server', data);
             }
             else if(password != thePass){
-                alert("Wrong Password!" + password + " " + thePass);
+                alert("Wrong Password: " + password + " " + thePass);
             }
             else if(isBanned){
                 alert("You have been banned from this chatroom");
@@ -644,10 +621,11 @@
         <button class="btn btn-primary" id="sendMessageButton">send</button>
         <p>Users currently in this chat: </p>
         <div id="user-list"></div>
-        <div id="chatlog"></div>
-        <p>
-            Private Messages
-        </p>
+        <div id="chatlog">
+            <h6>Messages</h6>
+        </div>
+        <h6 id="private-messages">Private Messages</h6>
+        <hr>
         <div id = "privatechatmessages">
 
         </div>
